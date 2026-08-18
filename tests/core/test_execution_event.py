@@ -103,6 +103,42 @@ class ExecutionEventTests(unittest.TestCase):
         with self.assertRaises(AttributeError):
             event.execution_id = EntityId.new()
 
+    def test_failed_event_preserves_identity_and_causation(self):
+        execution = self.create_execution()
+
+        causation_id = EntityId.new()
+
+        event = ExecutionFailed.create(
+            execution=execution,
+            error="boom",
+            occurred_at=self.NOW,
+            causation_id=causation_id,
+        )
+
+        self.assertIsInstance(
+            event.event_id,
+            EntityId,
+        )
+
+        self.assertEqual(
+            event.execution_id,
+            execution.execution_id,
+        )
+
+        self.assertEqual(
+            event.correlation_id,
+            execution.correlation_id,
+        )
+
+        self.assertEqual(
+            event.causation_id,
+            causation_id,
+        )
+
+        self.assertEqual(
+            event.occurred_at,
+            self.NOW,
+        )
 
 if __name__ == "__main__":
     unittest.main()
