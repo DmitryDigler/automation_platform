@@ -3,6 +3,7 @@
 from typing import Protocol
 
 from automation_platform.core.execution import Execution
+from automation_platform.core.result import ExecutionResult
 
 
 class Executor(Protocol):
@@ -20,7 +21,10 @@ class Executor(Protocol):
         """Stable logical executor identifier."""
         ...
 
-    def execute(self, execution: Execution) -> object:
+    def execute(
+        self,
+        execution: Execution,
+    ) -> ExecutionResult:
         """
         Perform one execution attempt.
 
@@ -29,7 +33,5 @@ class Executor(Protocol):
         The Executor performs work and reports an observed outcome.
         Execution lifecycle transitions remain the responsibility
         of the Execution Engine.
-
-        The concrete outcome type will be formalized by the Result model.
         """
         ...
