@@ -161,7 +161,47 @@ class ExecutionEngineEventTests(unittest.TestCase):
             succeeded.causation_id,
             started.event_id,
         )
+    def test_failed_lifecycle_events_form_causation_chain(self):
+        engine = self.create_engine(
+            ExecutionResult.failure("boom")
+        )
 
+        execution = self.create_execution()
+
+        outcome = engine.run(
+            execution,
+            required_capabilities=frozenset(),
+            occurred_at=self.NOW,
+        )
+
+        admitted = outcome.events[0]
+        started = outcome.events[1]
+        failed = outcome.events[2]
+
+        self.assertIsNone(
+            admitted.causation_id,
+        )
+
+        self.assertEqual(
+            started.causation_id,
+            admitted.event_id,
+        )
+
+        self.assertEqual(
+            failed.causation_id,
+            started.event_id,
+        )
+
+        self.assertEqual(
+            failed.execution_id,
+            execution.execution_id,
+        )
+
+        self.assertEqual(
+            failed.correlation_id,
+            execution.correlation_id,
+        )
 
 if __name__ == "__main__":
     unittest.main()
+
