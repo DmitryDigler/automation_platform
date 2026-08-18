@@ -202,6 +202,31 @@ class ExecutionEngineEventTests(unittest.TestCase):
             execution.correlation_id,
         )
 
+    def test_lifecycle_events_preserve_execution_and_correlation_identity(self):
+        engine = self.create_engine(
+            ExecutionResult.success("hello")
+        )
+
+        execution = self.create_execution()
+
+        outcome = engine.run(
+            execution,
+            required_capabilities=frozenset(),
+            occurred_at=self.NOW,
+        )
+
+        self.assertEqual(len(outcome.events), 3)
+
+        for event in outcome.events:
+            self.assertEqual(
+                event.execution_id,
+                execution.execution_id,
+            )
+            self.assertEqual(
+                event.correlation_id,
+                execution.correlation_id,
+            )
+
 if __name__ == "__main__":
     unittest.main()
 
