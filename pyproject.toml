@@ -1,0 +1,16 @@
+﻿[project]
+name = "automation-platform"
+version = "0.1.0"
+description = "Extensible automation platform"
+readme = "README.md"
+requires-python = ">=3.14,<3.15"
+license = { text = "Proprietary" }
+authors = [
+    { name = "DmitryDigler" }
+]
+
+dependencies = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
