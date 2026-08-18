@@ -8,6 +8,12 @@ from automation_platform.core.execution import (
     Execution,
     ExecutionStatus,
 )
+from automation_platform.core.execution_event import (
+    ExecutionAdmitted,
+    ExecutionFailed,
+    ExecutionStarted,
+    ExecutionSucceeded,
+)
 from automation_platform.core.node import Node
 from automation_platform.core.outcome import ExecutionOutcome
 from automation_platform.core.result import ExecutionResult
@@ -126,19 +132,31 @@ class ExecutionEngine:
     ) -> ExecutionOutcome:
         """
         Run one complete execution lifecycle and preserve
-        the Executor observation.
+        the Executor observation and lifecycle events.
 
         CREATED
+            -> ExecutionAdmitted
             -> READY
             -> Node selected
+            -> ExecutionStarted
             -> RUNNING
             -> Executor observation
+            -> ExecutionSucceeded / ExecutionFailed
             -> SUCCEEDED / FAILED
         """
+
+        events: list[object] = []
 
         current = self.admit(
             execution,
             occurred_at=occurred_at,
+        )
+
+        events.append(
+            ExecutionAdmitted.create(
+                execution=current,
+                occurred_at=occurred_at,
+            )
         )
 
         self.select(
@@ -149,6 +167,13 @@ class ExecutionEngine:
         current = self.start(
             current,
             occurred_at=occurred_at,
+        )
+
+        events.append(
+            ExecutionStarted.create(
+                execution=current,
+                occurred_at=occurred_at,
+            )
         )
 
         observation = self.executor.execute(current)
@@ -164,7 +189,24 @@ class ExecutionEngine:
             occurred_at=occurred_at,
         )
 
+        if observation.success:
+            events.append(
+                ExecutionSucceeded.create(
+                    execution=current,
+                    occurred_at=occurred_at,
+                )
+            )
+        else:
+            events.append(
+                ExecutionFailed.create(
+                    execution=current,
+                    error=observation.error or "execution failed",
+                    occurred_at=occurred_at,
+                )
+            )
+
         return ExecutionOutcome(
             execution=current,
             result=observation,
+            events=tuple(events),
         )

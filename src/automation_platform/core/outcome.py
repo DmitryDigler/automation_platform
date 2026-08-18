@@ -11,10 +11,12 @@ class ExecutionOutcome:
     """
     Immutable outcome of one execution attempt.
 
-    Contains both:
+    Contains:
     - the final execution lifecycle state;
-    - the observation produced by the Executor.
+    - the observation produced by the Executor;
+    - lifecycle events produced during the execution.
     """
 
     execution: Execution
     result: ExecutionResult
+    events: tuple[object, ...] = ()
