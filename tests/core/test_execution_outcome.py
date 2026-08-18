@@ -3,8 +3,14 @@ from datetime import datetime, timezone
 
 from automation_platform.core.execution import Execution, ExecutionStatus
 from automation_platform.core.execution_engine import ExecutionEngine
+from automation_platform.core.execution_event import (
+    ExecutionAdmitted,
+    ExecutionStarted,
+    ExecutionSucceeded,
+)
 from automation_platform.core.identity import EntityId
 from automation_platform.core.node import Node
+from automation_platform.core.outcome import ExecutionOutcome
 from automation_platform.core.result import ExecutionResult
 
 
@@ -118,6 +124,49 @@ class ExecutionEngineOutcomeTests(unittest.TestCase):
         self.assertEqual(
             execution.execution_id,
             outcome.execution.execution_id,
+        )
+
+    def test_run_returns_complete_execution_outcome(self):
+        engine = self.create_engine(
+            ExecutionResult.success("hello")
+        )
+
+        execution = self.create_execution()
+
+        outcome = engine.run(
+            execution,
+            required_capabilities=frozenset(),
+            occurred_at=self.NOW,
+        )
+
+        self.assertIsInstance(
+            outcome,
+            ExecutionOutcome,
+        )
+
+        self.assertIs(
+            outcome.result,
+            engine.executor.result,
+        )
+
+        self.assertEqual(
+            len(outcome.events),
+            3,
+        )
+
+        self.assertIsInstance(
+            outcome.events[0],
+            ExecutionAdmitted,
+        )
+
+        self.assertIsInstance(
+            outcome.events[1],
+            ExecutionStarted,
+        )
+
+        self.assertIsInstance(
+            outcome.events[2],
+            ExecutionSucceeded,
         )
 
 
