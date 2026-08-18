@@ -140,5 +140,42 @@ class ExecutionEventTests(unittest.TestCase):
             self.NOW,
         )
 
+    def test_succeeded_event_preserves_identity_and_causation(self):
+        execution = self.create_execution()
+
+        causation_id = EntityId.new()
+
+        event = ExecutionSucceeded.create(
+            execution=execution,
+            occurred_at=self.NOW,
+            causation_id=causation_id,
+        )
+
+        self.assertIsInstance(
+            event.event_id,
+            EntityId,
+        )
+
+        self.assertEqual(
+            event.execution_id,
+            execution.execution_id,
+        )
+
+        self.assertEqual(
+            event.correlation_id,
+            execution.correlation_id,
+        )
+
+        self.assertEqual(
+            event.causation_id,
+            causation_id,
+        )
+
+        self.assertEqual(
+            event.occurred_at,
+            self.NOW,
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
