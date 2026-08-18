@@ -1,8 +1,12 @@
 ﻿from __future__ import annotations
 
+from datetime import datetime
 from typing import Protocol
 
+from automation_platform.core.capability import Capability
 from automation_platform.core.execution import Execution
+from automation_platform.core.outcome import ExecutionOutcome
+from automation_platform.core.node import Node
 
 
 class ExecutionEnginePort(Protocol):
@@ -13,19 +17,35 @@ class ExecutionEnginePort(Protocol):
     Executors perform domain work and report observations.
     """
 
-    def admit(self, execution: Execution) -> Execution:
+    def admit(
+        self,
+        execution: Execution,
+        *,
+        occurred_at: datetime,
+    ) -> Execution:
         """
         Admit an execution into the Engine lifecycle.
         """
         ...
 
-    def select(self, execution: Execution) -> Execution:
+    def select(
+        self,
+        execution: Execution,
+        *,
+        required_capabilities: frozenset[Capability],
+    ) -> Node:
         """
-        Select execution resources / executor for the attempt.
+        Select an execution resource capable of satisfying
+        the required capabilities.
         """
         ...
 
-    def start(self, execution: Execution) -> Execution:
+    def start(
+        self,
+        execution: Execution,
+        *,
+        occurred_at: datetime,
+    ) -> Execution:
         """
         Start an admitted execution.
         """
@@ -34,7 +54,9 @@ class ExecutionEnginePort(Protocol):
     def observe(
         self,
         execution: Execution,
-        observation,
+        *,
+        success: bool,
+        occurred_at: datetime,
     ) -> Execution:
         """
         Apply an external execution observation.
@@ -45,16 +67,38 @@ class ExecutionEnginePort(Protocol):
         """
         ...
 
-    def cancel(self, execution: Execution) -> Execution:
+    def cancel(
+        self,
+        execution: Execution,
+        *,
+        occurred_at: datetime,
+    ) -> Execution:
         """
-        Request cancellation of an execution.
+        Cancel an execution.
         """
         ...
 
-    def retry(self, execution: Execution) -> Execution:
+    def retry(
+        self,
+        execution: Execution,
+        *,
+        created_at: datetime,
+    ) -> Execution:
         """
         Create a new execution attempt.
 
         Retry never rewinds or mutates the original execution.
+        """
+        ...
+
+    def run(
+        self,
+        execution: Execution,
+        *,
+        required_capabilities: frozenset[Capability],
+        occurred_at: datetime,
+    ) -> ExecutionOutcome:
+        """
+        Run one complete execution lifecycle.
         """
         ...
