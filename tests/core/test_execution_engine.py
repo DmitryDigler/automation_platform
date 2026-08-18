@@ -1,46 +1,86 @@
 ﻿import unittest
 from datetime import datetime, timezone
 
+from automation_platform.core.capability import Capability
 from automation_platform.core.execution import Execution
+from automation_platform.core.execution import ExecutionStatus
+from automation_platform.core.execution_engine import ExecutionEngine
+from automation_platform.core.node import Node
+from automation_platform.core.result import ExecutionResult
 from automation_platform.ports.execution_engine import ExecutionEnginePort
 
 
-def now():
-    return datetime.now(timezone.utc)
+NOW = datetime(
+    2026,
+    1,
+    1,
+    tzinfo=timezone.utc,
+)
+
+
+class FakeSelector:
+    def __init__(self, node):
+        self.node = node
+
+    def select(self, required_capabilities):
+        return self.node
+
+
+class FakeExecutor:
+    name = "fake"
+
+    def execute(self, execution):
+        return ExecutionResult.success("ok")
 
 
 class FakeExecutionEngine:
-    def admit(self, execution):
+    def admit(self, execution, *, occurred_at):
         return execution.transition(
-            "ready",
-            occurred_at=now(),
+            ExecutionStatus.READY,
+            occurred_at=occurred_at,
         )
 
-    def select(self, execution):
-        return execution
-
-    def start(self, execution):
-        return execution.transition(
-            "running",
-            occurred_at=now(),
+    def select(self, execution, *, required_capabilities):
+        return Node(
+            node_id="node-test",
+            runtime_id="runtime-test",
+            version="1",
+            capabilities=frozenset(required_capabilities),
+            status="available",
         )
 
-    def observe(self, execution, observation):
-        return execution
-
-    def cancel(self, execution):
+    def start(self, execution, *, occurred_at):
         return execution.transition(
-            "cancelled",
-            occurred_at=now(),
+            ExecutionStatus.RUNNING,
+            occurred_at=occurred_at,
         )
 
-    def retry(self, execution):
+    def observe(self, execution, *, success, occurred_at):
+        target = (
+            ExecutionStatus.SUCCEEDED
+            if success
+            else ExecutionStatus.FAILED
+        )
+
+        return execution.transition(
+            target,
+            occurred_at=occurred_at,
+        )
+
+    def cancel(self, execution, *, occurred_at):
+        return execution.transition(
+            ExecutionStatus.CANCELLED,
+            occurred_at=occurred_at,
+        )
+
+    def retry(self, execution, *, created_at):
         return Execution.create(
             command_id=execution.command_id,
             plan_id=execution.plan_id,
             correlation_id=execution.correlation_id,
             executor=execution.executor,
-            created_at=now(),
+            attempt=execution.attempt + 1,
+            created_at=created_at,
         )
 
 
@@ -68,7 +108,7 @@ class ExecutionEngineBehaviorTests(unittest.TestCase):
             plan_id="plan-test",
             correlation_id="correlation-test",
             executor="executor-test",
-            created_at=now(),
+            created_at=NOW,
         )
 
     def test_execution_starts_as_created(self):
@@ -76,52 +116,65 @@ class ExecutionEngineBehaviorTests(unittest.TestCase):
 
         self.assertEqual(
             execution.status,
-            "created",
+            ExecutionStatus.CREATED,
         )
 
     def test_execution_can_be_admitted(self):
         engine = FakeExecutionEngine()
         execution = self.create_execution()
 
-        admitted = engine.admit(execution)
+        admitted = engine.admit(
+            execution,
+            occurred_at=NOW,
+        )
 
         self.assertEqual(
             admitted.status,
-            "ready",
+            ExecutionStatus.READY,
         )
 
         self.assertEqual(
             execution.status,
-            "created",
+            ExecutionStatus.CREATED,
         )
 
     def test_execution_transition_is_immutable(self):
         engine = FakeExecutionEngine()
         execution = self.create_execution()
 
-        admitted = engine.admit(execution)
-        started = engine.start(admitted)
+        admitted = engine.admit(
+            execution,
+            occurred_at=NOW,
+        )
+
+        started = engine.start(
+            admitted,
+            occurred_at=NOW,
+        )
 
         self.assertEqual(
             execution.status,
-            "created",
+            ExecutionStatus.CREATED,
         )
 
         self.assertEqual(
             admitted.status,
-            "ready",
+            ExecutionStatus.READY,
         )
 
         self.assertEqual(
             started.status,
-            "running",
+            ExecutionStatus.RUNNING,
         )
 
     def test_retry_creates_new_execution(self):
         engine = FakeExecutionEngine()
         original = self.create_execution()
 
-        retry = engine.retry(original)
+        retry = engine.retry(
+            original,
+            created_at=NOW,
+        )
 
         self.assertNotEqual(
             original.execution_id,
@@ -130,7 +183,12 @@ class ExecutionEngineBehaviorTests(unittest.TestCase):
 
         self.assertEqual(
             retry.status,
-            "created",
+            ExecutionStatus.CREATED,
+        )
+
+        self.assertEqual(
+            retry.attempt,
+            original.attempt + 1,
         )
 
 
