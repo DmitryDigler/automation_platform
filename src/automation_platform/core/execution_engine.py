@@ -3,12 +3,14 @@
 from dataclasses import dataclass
 from datetime import datetime
 
+from automation_platform.core.capability import Capability
 from automation_platform.core.execution import (
     Execution,
     ExecutionStatus,
 )
 from automation_platform.core.node import Node
-from automation_platform.core.capability import Capability
+from automation_platform.core.outcome import ExecutionOutcome
+from automation_platform.core.result import ExecutionResult
 from automation_platform.ports.executor import Executor
 from automation_platform.ports.node_selector import NodeSelector
 
@@ -19,9 +21,13 @@ class ExecutionEngine:
     Orchestrates execution without owning execution semantics.
 
     The engine coordinates:
-        Execution -> NodeSelector -> Node -> Executor
 
-    Execution itself remains immutable.
+        Execution
+            -> NodeSelector
+            -> Node
+            -> Executor
+            -> ExecutionResult
+            -> ExecutionOutcome
     """
 
     selector: NodeSelector
@@ -109,4 +115,56 @@ class ExecutionEngine:
             executor=execution.executor,
             attempt=execution.attempt + 1,
             created_at=created_at,
+        )
+
+    def run(
+        self,
+        execution: Execution,
+        *,
+        required_capabilities: frozenset[Capability],
+        occurred_at: datetime,
+    ) -> ExecutionOutcome:
+        """
+        Run one complete execution lifecycle and preserve
+        the Executor observation.
+
+        CREATED
+            -> READY
+            -> Node selected
+            -> RUNNING
+            -> Executor observation
+            -> SUCCEEDED / FAILED
+        """
+
+        current = self.admit(
+            execution,
+            occurred_at=occurred_at,
+        )
+
+        self.select(
+            current,
+            required_capabilities=required_capabilities,
+        )
+
+        current = self.start(
+            current,
+            occurred_at=occurred_at,
+        )
+
+        observation = self.executor.execute(current)
+
+        if not isinstance(observation, ExecutionResult):
+            raise TypeError(
+                "executor must return ExecutionResult"
+            )
+
+        current = self.observe(
+            current,
+            success=observation.success,
+            occurred_at=occurred_at,
+        )
+
+        return ExecutionOutcome(
+            execution=current,
+            result=observation,
         )
