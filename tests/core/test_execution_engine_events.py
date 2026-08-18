@@ -9,6 +9,7 @@ from automation_platform.core.execution_event import (
     ExecutionAdmitted,
     ExecutionStarted,
     ExecutionSucceeded,
+    ExecutionFailed,
 )
 from automation_platform.core.identity import EntityId
 from automation_platform.core.node import Node
