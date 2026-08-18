@@ -127,8 +127,32 @@ class ExecutionEngineRunTests(unittest.TestCase):
             result.execution.execution_id,
         )
 
+    def test_run_rejects_invalid_executor_observation(self):
+        class InvalidExecutor:
+            @property
+            def name(self):
+                return "invalid"
+
+            def execute(self, execution):
+                return "not-an-execution-result"
+
+        engine = ExecutionEngine(
+            selector=FakeSelector(self.create_node()),
+            executor=InvalidExecutor(),
+        )
+
+        execution = self.create_execution()
+
+        with self.assertRaisesRegex(
+            TypeError,
+            "executor must return ExecutionResult",
+        ):
+            engine.run(
+                execution,
+                required_capabilities=frozenset(),
+                occurred_at=self.NOW,
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
-
-
