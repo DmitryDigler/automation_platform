@@ -131,6 +131,37 @@ class ExecutionEngineEventTests(unittest.TestCase):
                 self.NOW,
             )
 
+    def test_events_form_causation_chain(self):
+        engine = self.create_engine(
+            ExecutionResult.success("hello")
+        )
+
+        execution = self.create_execution()
+
+        outcome = engine.run(
+            execution,
+            required_capabilities=frozenset(),
+            occurred_at=self.NOW,
+        )
+
+        admitted = outcome.events[0]
+        started = outcome.events[1]
+        succeeded = outcome.events[2]
+
+        self.assertIsNone(
+            admitted.causation_id,
+        )
+
+        self.assertEqual(
+            started.causation_id,
+            admitted.event_id,
+        )
+
+        self.assertEqual(
+            succeeded.causation_id,
+            started.event_id,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

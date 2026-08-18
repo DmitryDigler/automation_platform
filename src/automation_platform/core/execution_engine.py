@@ -152,12 +152,12 @@ class ExecutionEngine:
             occurred_at=occurred_at,
         )
 
-        events.append(
-            ExecutionAdmitted.create(
-                execution=current,
-                occurred_at=occurred_at,
-            )
+        admitted_event = ExecutionAdmitted.create(
+            execution=current,
+            occurred_at=occurred_at,
         )
+
+        events.append(admitted_event)
 
         self.select(
             current,
@@ -169,12 +169,13 @@ class ExecutionEngine:
             occurred_at=occurred_at,
         )
 
-        events.append(
-            ExecutionStarted.create(
-                execution=current,
-                occurred_at=occurred_at,
-            )
+        started_event = ExecutionStarted.create(
+            execution=current,
+            occurred_at=occurred_at,
+            causation_id=admitted_event.event_id,
         )
+
+        events.append(started_event)
 
         observation = self.executor.execute(current)
 
@@ -190,20 +191,20 @@ class ExecutionEngine:
         )
 
         if observation.success:
-            events.append(
-                ExecutionSucceeded.create(
-                    execution=current,
-                    occurred_at=occurred_at,
-                )
+            terminal_event = ExecutionSucceeded.create(
+                execution=current,
+                occurred_at=occurred_at,
+                causation_id=started_event.event_id,
             )
         else:
-            events.append(
-                ExecutionFailed.create(
-                    execution=current,
-                    error=observation.error or "execution failed",
-                    occurred_at=occurred_at,
-                )
+            terminal_event = ExecutionFailed.create(
+                execution=current,
+                error=observation.error or "execution failed",
+                occurred_at=occurred_at,
+                causation_id=started_event.event_id,
             )
+
+        events.append(terminal_event)
 
         return ExecutionOutcome(
             execution=current,
