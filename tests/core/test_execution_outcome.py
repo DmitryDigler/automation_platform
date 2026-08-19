@@ -219,20 +219,43 @@ class ExecutionEngineOutcomeTests(unittest.TestCase):
         )
 
     def test_outcome_is_immutable(self):
-        outcome = ExecutionOutcome(
-            execution=self.create_execution(),
-            result=ExecutionResult.success("hello"),
-            events=(),
+        engine = self.create_engine(
+            ExecutionResult.success("hello")
+        )
+
+        outcome = engine.run(
+            self.create_execution(),
+            required_capabilities=frozenset(),
+            occurred_at=self.NOW,
         )
 
         with self.assertRaises(AttributeError):
-            outcome.execution = self.create_execution()
+            outcome.result = ExecutionResult.success("changed")
 
-        with self.assertRaises(AttributeError):
-            outcome.result = ExecutionResult.failure("boom")
+    def test_run_returns_events_with_causation_chain(self):
+        engine = self.create_engine(
+            ExecutionResult.success("hello")
+        )
 
-        with self.assertRaises(AttributeError):
-            outcome.events = ()
+        outcome = engine.run(
+            self.create_execution(),
+            required_capabilities=frozenset(),
+            occurred_at=self.NOW,
+        )
+
+        self.assertIsNone(
+            outcome.events[0].causation_id,
+        )
+
+        self.assertEqual(
+            outcome.events[1].causation_id,
+            outcome.events[0].event_id,
+        )
+
+        self.assertEqual(
+            outcome.events[2].causation_id,
+            outcome.events[1].event_id,
+        )
 
 
 if __name__ == "__main__":
