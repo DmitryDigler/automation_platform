@@ -277,7 +277,40 @@ class ExecutionEngineOutcomeTests(unittest.TestCase):
                 required_capabilities=frozenset(),
                 occurred_at=self.NOW,
             )
+    def test_run_does_not_execute_when_node_selection_fails(self):
+        class FailingSelector:
+            def select(self, required):
+                raise RuntimeError("no capable node")
 
+        class TrackingExecutor:
+            def __init__(self):
+                self.called = False
+
+            @property
+            def name(self):
+                return "tracking"
+
+            def execute(self, execution):
+                self.called = True
+                return ExecutionResult.success("should not run")
+
+        executor = TrackingExecutor()
+
+        engine = ExecutionEngine(
+            selector=FailingSelector(),
+            executor=executor,
+        )
+
+        execution = self.create_execution()
+
+        with self.assertRaises(RuntimeError):
+            engine.run(
+                execution,
+                required_capabilities=frozenset(),
+                occurred_at=self.NOW,
+            )
+
+        self.assertFalse(executor.called)
 
 if __name__ == "__main__":
     unittest.main()
