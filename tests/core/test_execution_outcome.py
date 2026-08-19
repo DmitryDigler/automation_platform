@@ -257,6 +257,27 @@ class ExecutionEngineOutcomeTests(unittest.TestCase):
             outcome.events[1].event_id,
         )
 
+    def test_run_fails_when_node_selection_fails(self):
+        class FailingSelector:
+            def select(self, required):
+                raise RuntimeError("no capable node")
+
+        engine = ExecutionEngine(
+            selector=FailingSelector(),
+            executor=FakeExecutor(
+                ExecutionResult.success("hello")
+            ),
+        )
+
+        execution = self.create_execution()
+
+        with self.assertRaises(RuntimeError):
+            engine.run(
+                execution,
+                required_capabilities=frozenset(),
+                occurred_at=self.NOW,
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
