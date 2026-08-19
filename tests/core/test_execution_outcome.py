@@ -218,6 +218,22 @@ class ExecutionEngineOutcomeTests(unittest.TestCase):
             ExecutionFailed,
         )
 
+    def test_outcome_is_immutable(self):
+        outcome = ExecutionOutcome(
+            execution=self.create_execution(),
+            result=ExecutionResult.success("hello"),
+            events=(),
+        )
+
+        with self.assertRaises(AttributeError):
+            outcome.execution = self.create_execution()
+
+        with self.assertRaises(AttributeError):
+            outcome.result = ExecutionResult.failure("boom")
+
+        with self.assertRaises(AttributeError):
+            outcome.events = ()
+
 
 if __name__ == "__main__":
     unittest.main()
