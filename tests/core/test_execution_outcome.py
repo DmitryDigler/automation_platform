@@ -5,6 +5,7 @@ from automation_platform.core.execution import Execution, ExecutionStatus
 from automation_platform.core.execution_engine import ExecutionEngine
 from automation_platform.core.execution_event import (
     ExecutionAdmitted,
+    ExecutionFailed,
     ExecutionStarted,
     ExecutionSucceeded,
 )
@@ -167,6 +168,54 @@ class ExecutionEngineOutcomeTests(unittest.TestCase):
         self.assertIsInstance(
             outcome.events[2],
             ExecutionSucceeded,
+        )
+
+    def test_run_returns_complete_failed_execution_outcome(self):
+        engine = self.create_engine(
+            ExecutionResult.failure("boom")
+        )
+
+        execution = self.create_execution()
+
+        outcome = engine.run(
+            execution,
+            required_capabilities=frozenset(),
+            occurred_at=self.NOW,
+        )
+
+        self.assertIsInstance(
+            outcome,
+            ExecutionOutcome,
+        )
+
+        self.assertIs(
+            outcome.result,
+            engine.executor.result,
+        )
+
+        self.assertEqual(
+            outcome.execution.status,
+            ExecutionStatus.FAILED,
+        )
+
+        self.assertEqual(
+            len(outcome.events),
+            3,
+        )
+
+        self.assertIsInstance(
+            outcome.events[0],
+            ExecutionAdmitted,
+        )
+
+        self.assertIsInstance(
+            outcome.events[1],
+            ExecutionStarted,
+        )
+
+        self.assertIsInstance(
+            outcome.events[2],
+            ExecutionFailed,
         )
 
 
